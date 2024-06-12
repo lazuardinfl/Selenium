@@ -111,8 +111,15 @@ function Get-WebDriverWait ($driver) {
 }
 
 function Import-SeleniumBinaries ($path) {
-    if (($env:Path -split ';') -notcontains $path) {$env:Path += ";$path"}
-    Import-Module "$($path)\WebDriver.dll" -Force
-    Import-Module "$($path)\WebDriver.Support.dll" -Force
-    Import-Module "$($path)\Selenium.WebDriverBackedSelenium.dll" -Force
+    $version = "Selenium\bin\4.21.0"
+    $binPath = "$($path)\$($version)"
+    if (!(Test-Path -Path $binPath)) {
+        $binPath = "$([System.Environment]::GetEnvironmentVariable($env:BotAgent))\libraries\$($version)"
+    }
+    Import-Module "$($binPath)\WebDriver.dll" -Global -Force -ErrorAction Stop
+    Import-Module "$($binPath)\WebDriver.Support.dll" -Global -Force -ErrorAction Stop
+    if (($env:Path -split ";") -notcontains $binPath) {$env:Path += ";$($binPath)"}
+    $env:SE_MANAGER_PATH = "$($binPath)\selenium-manager.exe"
+    $env:SE_AVOID_BROWSER_DOWNLOAD = $true;
+    $env:SE_AVOID_STATS = $true;
 }

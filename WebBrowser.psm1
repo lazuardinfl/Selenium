@@ -1,5 +1,4 @@
 using namespace OpenQA.Selenium
-using namespace OpenQA.Selenium.Support.UI
 
 function Start-Browser ($app, $headless) {
     switch ($app) {
@@ -13,16 +12,18 @@ function Start-Browser ($app, $headless) {
             $optionsEdgeIE.IgnoreZoomLevel = $true
         }
         "Edge" {
-            $optionsEdge = [Edge.EdgeOptions]::new()
-            $optionsEdge.AddArgument("ignore-ssl-errors")
-            $optionsEdge.AddArgument("ignore-certificate-errors")
-            $optionsEdge.AddArgument("remote-debugging-port=9222") # prevent admin error and to reconnect session
-            $optionsEdge.AddExcludedArgument("enable-logging") # hide console log
-            # $optionsEdge.AddExcludedArgument("enable-automation") # failed at Edge > v109
-            $optionsEdge.AddUserProfilePreference("credentials_enable_service", $false)
-            $optionsEdge.AddUserProfilePreference("profile.password_manager_enabled", $false)
-            $optionsEdge.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
-            if ($headless -eq "headless") {$optionsEdge.AddArgument("headless")} # without UI
+            $options = [Edge.EdgeOptions]::new()
+            $options.AddArgument("do-not-de-elevate") # run as admin must use this
+            $options.AddArgument("ignore-ssl-errors")
+            $options.AddArgument("ignore-certificate-errors")
+            $options.AddArgument("remote-debugging-port=9222")
+            $options.AddArgument("enable-features=msEdgeTowerAutoHide")
+            $options.AddExcludedArgument("enable-logging")
+            $options.AddExcludedArgument("enable-automation")
+            $options.AddUserProfilePreference("credentials_enable_service", $false)
+            $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
+            $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
+            # $options.AddArgument("user-data-dir=C:\Users\<name>\AppData\Local\Temp")
         }
         "Chrome" {
             $optionsChrome = [Chrome.ChromeOptions]::new()
@@ -41,7 +42,7 @@ function Start-Browser ($app, $headless) {
         try {
             switch ($app) {
                 "EdgeIE" {$driver = [IE.InternetExplorerDriver]::new($servicesEdgeIE, $optionsEdgeIE)}
-                "Edge" {$driver = [Edge.EdgeDriver]::new($optionsEdge)}
+                "Edge" {$driver = [Edge.EdgeDriver]::new($options)}
                 "Chrome" {$driver = [Chrome.ChromeDriver]::new($optionsChrome)}
                 Default {}
             }

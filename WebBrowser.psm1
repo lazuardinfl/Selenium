@@ -1,47 +1,47 @@
 using namespace OpenQA.Selenium
+using namespace OpenQA.Selenium.Chrome
+using namespace OpenQA.Selenium.Edge
+using namespace OpenQA.Selenium.Support.UI
+using namespace System
 
-function Start-Browser ($app, $headless) {
-    switch ($app) {
+function Start-Browser {
+    [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
+    param (
+        [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
+        [Alias("EnableLogging")] [switch]$log
+    )
+    switch ($type) {
+        "Chrome" {
+            $options = [ChromeOptions]::new()
+        }
         "Edge" {
-            $options = [Edge.EdgeOptions]::new()
+            $options = [EdgeOptions]::new()
             $options.AddArgument("do-not-de-elevate") # prevent error when run as admin
-            $options.AddArgument("ignore-ssl-errors")
-            $options.AddArgument("ignore-certificate-errors")
-            $options.AddArgument("remote-debugging-port=9222")
             $options.AddArgument("enable-features=msEdgeTowerAutoHide")
-            # $options.AddExcludedArgument("enable-logging")
-            $options.AddExcludedArgument("enable-automation")
-            $options.AddUserProfilePreference("credentials_enable_service", $false)
-            $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
             $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
         }
-        "Chrome" {
-            $options = [Chrome.ChromeOptions]::new()
-            $options.AddArgument("ignore-ssl-errors")
-            $options.AddArgument("ignore-certificate-errors")
-            $options.AddArgument("remote-debugging-port=9222")
-            # $options.AddExcludedArgument("enable-logging")
-            $options.AddExcludedArgument("enable-automation")
-            $options.AddUserProfilePreference("credentials_enable_service", $false)
-            $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
-        }
-        Default {}
+        Default {return $null}
     }
+    $options.AddArgument("ignore-ssl-errors")
+    $options.AddArgument("ignore-certificate-errors")
+    $options.AddArgument("remote-debugging-port=9222")
+    $options.AddExcludedArgument("enable-automation")
+    $options.AddUserProfilePreference("credentials_enable_service", $false)
+    $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
+    if (!$log) {$options.AddExcludedArgument("enable-logging")}
     $maxtry = 3
     for ($try = 0; $try -lt $maxtry; $try++) {
         try {
-            switch ($app) {
-                "Edge" {$driver = [Edge.EdgeDriver]::new($options)}
-                "Chrome" {$driver = [Chrome.ChromeDriver]::new($options)}
-                Default {}
+            switch ($type) {
+                "Edge" {$driver = [EdgeDriver]::new($options)}
+                "Chrome" {$driver = [ChromeDriver]::new($options)}
+                Default {return $null}
             }
-            Start-Sleep -s 2
             $driver.Manage().Window.Maximize()
-            Start-Sleep -s 2
             return $driver
         }
         catch {
-            Stop-Browser $driver $app
+            Stop-Browser $driver $type
             Remove-Variable driver -Scope Local
             Remove-Variable driver -Scope Script
             Start-Sleep -s 5
@@ -97,13 +97,31 @@ function Stop-Browser ($driver, $app, $waitafter) {
 }
 
 function Resume-Browser {
-    $options = [Chrome.ChromeOptions]::new()
-    $options.DebuggerAddress = "127.0.0.1:9222"
-    $driver = [Chrome.ChromeDriver]::new($options)
-    return $driver
+    [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
+    param (
+        [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type
+    )
+    $debuggerAddress = "127.0.0.1:9222"
+    switch ($type) {
+        "Chrome" {
+            $options = [ChromeOptions]::new()
+            $options.DebuggerAddress = $debuggerAddress
+            return [ChromeDriver]::new($options)
+        }
+        "Edge" {
+            $options = [EdgeOptions]::new()
+            $options.DebuggerAddress = $debuggerAddress
+            return [EdgeDriver]::new($options)
+        }
+        Default {return $null}
+    }
 }
 
-function Get-WebDriverWait ($driver) {
+function Get-WebDriverWait {
+    [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.IWebDriver]$driver
+    )
     return [WebDriverWait]::new($driver, (New-TimeSpan -Seconds 5))
 }
 
@@ -111,7 +129,7 @@ function Import-SeleniumBinaries ($path) {
     $version = "Selenium\bin\4.21.0"
     $binPath = "$($path)\$($version)"
     if (!(Test-Path -Path $binPath)) {
-        $binPath = "$([System.Environment]::GetEnvironmentVariable($env:BotAgent))\libraries\$($version)"
+        $binPath = "$([Environment]::GetEnvironmentVariable($env:BotAgent))\libraries\$($version)"
     }
     Import-Module "$($binPath)\WebDriver.dll" -Global -Force -ErrorAction Stop
     Import-Module "$($binPath)\WebDriver.Support.dll" -Global -Force -ErrorAction Stop

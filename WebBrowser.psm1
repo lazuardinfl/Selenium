@@ -2,38 +2,28 @@ using namespace OpenQA.Selenium
 
 function Start-Browser ($app, $headless) {
     switch ($app) {
-        "EdgeIE" {
-            $servicesEdgeIE = [IE.InternetExplorerDriverService]::CreateDefaultService()
-            $servicesEdgeIE.Port = 9223
-            $optionsEdgeIE = [IE.InternetExplorerOptions]::new()
-            $optionsEdgeIE.AttachToEdgeChrome = $true
-            $optionsEdgeIE.EdgeExecutablePath = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
-            $optionsEdgeIE.IntroduceInstabilityByIgnoringProtectedModeSettings = $true
-            $optionsEdgeIE.IgnoreZoomLevel = $true
-        }
         "Edge" {
             $options = [Edge.EdgeOptions]::new()
-            $options.AddArgument("do-not-de-elevate") # run as admin must use this
+            $options.AddArgument("do-not-de-elevate") # prevent error when run as admin
             $options.AddArgument("ignore-ssl-errors")
             $options.AddArgument("ignore-certificate-errors")
             $options.AddArgument("remote-debugging-port=9222")
             $options.AddArgument("enable-features=msEdgeTowerAutoHide")
-            $options.AddExcludedArgument("enable-logging")
+            # $options.AddExcludedArgument("enable-logging")
             $options.AddExcludedArgument("enable-automation")
             $options.AddUserProfilePreference("credentials_enable_service", $false)
             $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
             $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
-            # $options.AddArgument("user-data-dir=C:\Users\<name>\AppData\Local\Temp")
         }
         "Chrome" {
-            $optionsChrome = [Chrome.ChromeOptions]::new()
-            $optionsChrome.AddArgument("ignore-ssl-errors")
-            $optionsChrome.AddArgument("ignore-certificate-errors")
-            $optionsChrome.AddArgument("remote-debugging-port=9222") # to reconnect session
-            $optionsChrome.AddExcludedArgument("enable-automation")
-            $optionsChrome.AddUserProfilePreference("credentials_enable_service", $false)
-            $optionsChrome.AddUserProfilePreference("profile.password_manager_enabled", $false)
-            if ($headless -eq "headless") {$optionsChrome.AddArgument("headless")} # without UI
+            $options = [Chrome.ChromeOptions]::new()
+            $options.AddArgument("ignore-ssl-errors")
+            $options.AddArgument("ignore-certificate-errors")
+            $options.AddArgument("remote-debugging-port=9222")
+            # $options.AddExcludedArgument("enable-logging")
+            $options.AddExcludedArgument("enable-automation")
+            $options.AddUserProfilePreference("credentials_enable_service", $false)
+            $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
         }
         Default {}
     }
@@ -41,9 +31,8 @@ function Start-Browser ($app, $headless) {
     for ($try = 0; $try -lt $maxtry; $try++) {
         try {
             switch ($app) {
-                "EdgeIE" {$driver = [IE.InternetExplorerDriver]::new($servicesEdgeIE, $optionsEdgeIE)}
                 "Edge" {$driver = [Edge.EdgeDriver]::new($options)}
-                "Chrome" {$driver = [Chrome.ChromeDriver]::new($optionsChrome)}
+                "Chrome" {$driver = [Chrome.ChromeDriver]::new($options)}
                 Default {}
             }
             Start-Sleep -s 2
@@ -105,6 +94,13 @@ function Stop-Browser ($driver, $app, $waitafter) {
         }
     }
     if ($null -ne $waitafter) {Start-Sleep -s $waitafter}
+}
+
+function Resume-Browser {
+    $options = [Chrome.ChromeOptions]::new()
+    $options.DebuggerAddress = "127.0.0.1:9222"
+    $driver = [Chrome.ChromeDriver]::new($options)
+    return $driver
 }
 
 function Get-WebDriverWait ($driver) {

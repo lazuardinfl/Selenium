@@ -53,27 +53,47 @@ function Wait-Disappear {
     return $disappear ? $true : $false
 }
 
-function Invoke-Click ($driver, $by, $value) {
-    switch ($by) {
-        "id" {$driver.FindElement([By]::Id($value)).Click()}
-        "xpath" {$driver.FindElement([By]::XPath($value)).Click()}
-        Default {}
+function Invoke-Click {
+    [OutputType([bool])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
+        [Alias("Element")] [string]$value
+    )
+    try {
+        switch ($by) {
+            "Id" { $driver.FindElement([By]::Id($value)).Click() }
+            "XPath" { $driver.FindElement([By]::XPath($value)).Click() }
+        }
+        return $true
     }
+    catch { return $false }
 }
 
-function Set-Text ($driver, $by, $value, $text, $enter) {
-    switch ($by) {
-        "id" {$field = $driver.FindElement([By]::Id($value))}
-        "xpath" {$field = $driver.FindElement([By]::XPath($value))}
-        Default {}
+function Set-Text {
+    [OutputType([bool])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
+        [Alias("Element")] [string]$value,
+        [Alias("TextInput")] [string]$text,
+        [Alias("EnterAfter")] [switch]$enter
+    )
+    try {
+        switch ($by) {
+            "Id" { $field = $driver.FindElement([By]::Id($value)) }
+            "XPath" { $field = $driver.FindElement([By]::XPath($value)) }
+        }
+        $field.Click()
+        $field.Clear()
+        $field.SendKeys($text)
+        if ($enter) {
+            Start-Sleep -Seconds 1
+            $field.SendKeys([Keys]::Enter)
+        }
+        return $true
     }
-    $field.Click()
-    $field.Clear()
-    $field.SendKeys($text)
-    if ($enter -eq "enter") {
-        Start-Sleep -s 1
-        $field.SendKeys([Keys]::Enter)
-    }
+    catch { return $false }
 }
 
 function Switch-Handle ($driver, $wait, $by, $handle, $duration, $sleep) {

@@ -1,44 +1,86 @@
 using namespace OpenQA.Selenium
-using namespace OpenQA.Selenium.Support.UI
+using namespace System
 
-function Wait-Appear ($driver, $wait, $by, $element, $duration, $waitafter) {
+function Wait-Appear {
+    [OutputType([OpenQA.Selenium.WebElement])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriverWait")] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
+        [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
+        [Alias("Element")] [string]$value,
+        [Alias("WaitDuration")] [int]$duration,
+        [Alias("WaitAfter")] [int]$sleep
+    )
     $wait.Timeout = New-TimeSpan -Seconds $duration
-    $found = $wait.Until([System.Func[IWebDriver, bool]]{
+    $appear = $wait.Until([Func[IWebDriver, WebElement]] {
         try {
             switch ($by) {
-                "id" {$elm = $driver.FindElement([By]::Id($element))}
-                "xpath" {$elm = $driver.FindElement([By]::XPath($element))}
-                Default {}
+                "Id" { $element = $driver.FindElement([By]::Id($value)) }
+                "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
+                Default { return $null }
             }
-            return $elm.Displayed -and $elm.Enabled
+            return $element.Displayed -and $element.Enabled ? $element : $null
         }
-        catch {return $null}
+        catch { return $null }
     })
-    if (($found -eq $true) -and ($null -ne $waitafter)) {Start-Sleep -s $waitafter}
+    if ($appear) { Start-Sleep -Seconds $sleep }
+    return $appear
 }
 
-function Wait-Disappear ($driver, $wait, $by, $element, $duration, $waitafter) {
+function Wait-Disappear {
+    [OutputType([bool])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriverWait")] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
+        [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
+        [Alias("Element")] [string]$value,
+        [Alias("WaitDuration")] [int]$duration,
+        [Alias("WaitAfter")] [int]$sleep
+    )
     $wait.Timeout = New-TimeSpan -Seconds $duration
-    $disappear = $wait.Until([System.Func[IWebDriver, bool]]{
+    $disappear = $wait.Until([Func[IWebDriver, bool]] {
         try {
             switch ($by) {
-                "id" {$elm = $driver.FindElement([By]::Id($element))}
-                "xpath" {$elm = $driver.FindElement([By]::XPath($element))}
-                Default {}
+                "Id" { $element = $driver.FindElement([By]::Id($value)) }
+                "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
+                Default { return $null }
             }
-            if ($elm.Displayed -eq $true) {return $false}
-            else {return $true}
+            return $element.Displayed ? $false : $true
         }
-        catch {return $true}
+        catch { return $true }
     })
-    if (($disappear -eq $true) -and ($null -ne $waitafter)) {Start-Sleep -s $waitafter}
+    if ($disappear) { Start-Sleep -Seconds $sleep }
+    return $disappear ? $true : $false
 }
 
-function Switch-Handle ($driver, $wait, $by, $handle, $duration, $waitafter) {
+function Invoke-Click ($driver, $by, $value) {
+    switch ($by) {
+        "id" {$driver.FindElement([By]::Id($value)).Click()}
+        "xpath" {$driver.FindElement([By]::XPath($value)).Click()}
+        Default {}
+    }
+}
+
+function Set-Text ($driver, $by, $value, $text, $enter) {
+    switch ($by) {
+        "id" {$field = $driver.FindElement([By]::Id($value))}
+        "xpath" {$field = $driver.FindElement([By]::XPath($value))}
+        Default {}
+    }
+    $field.Click()
+    $field.Clear()
+    $field.SendKeys($text)
+    if ($enter -eq "enter") {
+        Start-Sleep -s 1
+        $field.SendKeys([Keys]::Enter)
+    }
+}
+
+function Switch-Handle ($driver, $wait, $by, $handle, $duration, $sleep) {
     if ($null -eq $duration) {$duration = 1}
-    if ($null -eq $waitafter) {$waitafter = 1}
+    if ($null -eq $sleep) {$sleep = 1}
     $wait.Timeout = New-TimeSpan -Seconds $duration
-    $switched = $wait.Until([System.Func[IWebDriver, bool]]{
+    $switched = $wait.Until([Func[IWebDriver, bool]]{
         try {
             switch ($by) {
                 "alert" {
@@ -62,42 +104,19 @@ function Switch-Handle ($driver, $wait, $by, $handle, $duration, $waitafter) {
         }
         catch {return $null}
     })
-    if ($switched -eq $true) {Start-Sleep -s $waitafter}
+    if ($switched -eq $true) {Start-Sleep -s $sleep}
 }
 
-function Invoke-Click ($driver, $by, $element) {
-    switch ($by) {
-        "id" {$driver.FindElement([By]::Id($element)).Click()}
-        "xpath" {$driver.FindElement([By]::XPath($element)).Click()}
-        Default {}
-    }
-}
-
-function Set-Text ($driver, $by, $element, $value, $enter) {
-    switch ($by) {
-        "id" {$field = $driver.FindElement([By]::Id($element))}
-        "xpath" {$field = $driver.FindElement([By]::XPath($element))}
-        Default {}
-    }
-    $field.Click()
-    $field.Clear()
-    $field.SendKeys($value)
-    if ($enter -eq "enter") {
-        Start-Sleep -s 1
-        $field.SendKeys([Keys]::Enter)
-    }
-}
-
-function Invoke-ScrollToElement ($driver, $byElement, $element, $byScroll, $scroll, $duration, $scrollafter, $fail) {
+function Invoke-ScrollToElement ($driver, $byElement, $value, $byScroll, $scroll, $duration, $scrollafter, $fail) {
     Wait-Loop @{
         action = {
             try {
                 switch ($byElement) {
-                    "id" {$elm = $driver.FindElement([By]::Id($element))}
-                    "xpath" {$elm = $driver.FindElement([By]::XPath($element))}
+                    "id" {$element = $driver.FindElement([By]::Id($value))}
+                    "xpath" {$element = $driver.FindElement([By]::XPath($value))}
                     Default {}
                 }
-                if (($elm.Displayed -and $elm.Enabled) -eq $true) {
+                if (($element.Displayed -and $element.Enabled) -eq $true) {
                     try {for ($i = 0; $i -lt $scrollafter; $i++) {Invoke-Click $driver $byScroll $scroll}} catch {}
                     return $true
                 }

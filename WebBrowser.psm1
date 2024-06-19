@@ -53,7 +53,7 @@ function Start-Browser {
 
 function Stop-Browser {
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.IWebDriver]$driver,
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("WaitAfter")] [int]$sleep,
         [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type
     )
@@ -100,7 +100,7 @@ function Resume-Browser {
 function Get-WebDriverWait {
     [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.IWebDriver]$driver
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver
     )
     return [WebDriverWait]::new($driver, (New-TimeSpan -Seconds 5))
 }

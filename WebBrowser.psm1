@@ -42,59 +42,38 @@ function Start-Browser {
             return $driver
         }
         catch {
-            Stop-Browser $driver $type
+            Stop-Browser $driver -Force $type
             Remove-Variable driver -Scope Local
             Remove-Variable driver -Scope Script
-            Start-Sleep -s 5
+            Start-Sleep -Seconds 5
         }
     }
     return $null
 }
 
-function Stop-Browser ($driver, $app, $waitafter) {
+function Stop-Browser {
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.IWebDriver]$driver,
+        [Alias("WaitAfter")] [int]$sleep,
+        [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type
+    )
     try {
         $driver.Close()
         $driver.Quit()
     }
     catch {}
-    switch ($app) {
-        "IE" {
-            Get-Process iexplore | ForEach-Object {$_.CloseMainWindow()}
-            Wait-Process iexplore -Timeout 10
-            Get-Process iexplore | Stop-Process -Force
-            Wait-Process IEDriverServer -Timeout 7
-            Get-Process IEDriverServer | Stop-Process -Force
+    if ($type -ne "") {
+        $browser = @{
+            Chrome = @{ Process = "chrome"; Driver = "chromedriver" }
+            Edge = @{ Process = "msedge"; Driver = "msedgedriver" }
         }
-        "EdgeIE" {
-            Get-Process iexplore, msedge | ForEach-Object {$_.CloseMainWindow()}
-            Wait-Process iexplore, msedge -Timeout 10
-            Get-Process iexplore, msedge | Stop-Process -Force
-            Wait-Process IEDriverServer, msedgedriver -Timeout 7
-            Get-Process IEDriverServer, msedgedriver | Stop-Process -Force
-        }
-        "Edge" {
-            Get-Process msedge | ForEach-Object {$_.CloseMainWindow()}
-            Wait-Process msedge -Timeout 10
-            Get-Process msedge | Stop-Process -Force
-            Wait-Process msedgedriver -Timeout 7
-            Get-Process msedgedriver | Stop-Process -Force
-        }
-        "Chrome" {
-            Get-Process chrome | ForEach-Object {$_.CloseMainWindow()}
-            Wait-Process chrome -Timeout 10
-            Get-Process chrome | Stop-Process -Force
-            Wait-Process chromedriver -Timeout 7
-            Get-Process chromedriver | Stop-Process -Force
-        }
-        Default {
-            Get-Process iexplore, msedge, chrome | ForEach-Object {$_.CloseMainWindow()}
-            Wait-Process iexplore, msedge, chrome -Timeout 10
-            Get-Process iexplore, msedge, chrome | Stop-Process -Force
-            Wait-Process IEDriverServer, msedgedriver, chromedriver -Timeout 7
-            Get-Process IEDriverServer, msedgedriver, chromedriver | Stop-Process -Force
-        }
+        Get-Process $browser[$type].Process | ForEach-Object { $_.CloseMainWindow() }
+        Wait-Process $browser[$type].Process -Timeout 10
+        Get-Process $browser[$type].Process | Stop-Process -Force
+        Wait-Process $browser[$type].Driver -Timeout 7
+        Get-Process $browser[$type].Driver | Stop-Process -Force
     }
-    if ($null -ne $waitafter) {Start-Sleep -s $waitafter}
+    Start-Sleep -Seconds $sleep
 }
 
 function Resume-Browser {
@@ -126,7 +105,10 @@ function Get-WebDriverWait {
     return [WebDriverWait]::new($driver, (New-TimeSpan -Seconds 5))
 }
 
-function Import-SeleniumBinary ($path) {
+function Import-SeleniumBinary {
+    param (
+        [Alias("LibraryPath")] [string]$path
+    )
     $Script:BinPath = $env:JENKINS_URL ?
         "$([Environment]::GetEnvironmentVariable($env:BotAgent))\libraries\$($BinPath)" : "$($path)\$($BinPath)"
     if (!(Test-Path -Path $BinPath)) { New-Item -Path $BinPath -ItemType Directory -Force }
@@ -136,7 +118,10 @@ function Import-SeleniumBinary ($path) {
     Set-SeleniumEnvironment
 }
 
-function Get-SeleniumBinary ($url) {
+function Get-SeleniumBinary {
+    param (
+        [Alias("DownloadUrl")] [string]$url
+    )
     $url = $url ? $url : ($env:SeleniumUrl ? $env:SeleniumUrl : "https://globalcdn.nuget.org/packages")
     $tempPath = "$($BinPath)\temp"
     $binaries = @(

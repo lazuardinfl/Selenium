@@ -11,15 +11,21 @@ function Start-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
     param (
         [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
-        [Alias("EnableLogging")] [switch]$log
+        [Alias("UseUserProfile")] [string]$userProfile,
+        [Alias("EnableLogging")] [switch]$log,
+        [Alias("DisableReloadOnFail")] [switch]$noRepeat
     )
     switch ($type) {
-        "Chrome" { $options = [ChromeOptions]::new() }
+        "Chrome" {
+            $options = [ChromeOptions]::new()
+            $userData = "$($env:LOCALAPPDATA)\Google\Chrome\User Data"
+        }
         "Edge" {
             $options = [EdgeOptions]::new()
             $options.AddArgument("do-not-de-elevate") # prevent error when run as admin
             $options.AddArgument("enable-features=msEdgeTowerAutoHide")
             $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
+            $userData = "$($env:LOCALAPPDATA)\Microsoft\Edge\User Data"
         }
         Default { return $null }
     }
@@ -30,6 +36,16 @@ function Start-Browser {
     $options.AddUserProfilePreference("credentials_enable_service", $false)
     $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
     if (!$log) { $options.AddExcludedArgument("enable-logging") }
+    if ($userProfile) {
+        if (Test-Path -Path "$($userData)\$($userProfile)") {
+            $options.AddArgument("user-data-dir=$($userData)")
+            $options.AddArgument("profile-directory=$($userProfile)")
+        }
+        elseif (Split-Path -Path $userProfile -IsAbsolute) {
+            $options.AddArgument("user-data-dir=$($userProfile)")
+        }
+        else { return $null }
+    }
     $maxtry = 3
     for ($try = 0; $try -lt $maxtry; $try++) {
         try {
@@ -42,10 +58,13 @@ function Start-Browser {
             return $driver
         }
         catch {
-            Stop-Browser $driver -Force $type
-            Remove-Variable driver -Scope Local
-            Remove-Variable driver -Scope Script
-            Start-Sleep -Seconds 5
+            if ($noRepeat) { break }
+            else {
+                Stop-Browser $driver -Force $type
+                Remove-Variable driver -Scope Local
+                Remove-Variable driver -Scope Script
+                Start-Sleep -Seconds 5
+            }
         }
     }
     return $null
@@ -62,12 +81,12 @@ function Stop-Browser {
         $driver.Quit()
     }
     catch {}
-    if ($type -ne "") {
+    if ($type) {
         $browser = @{
             Chrome = @{ Process = "chrome"; Driver = "chromedriver" }
             Edge = @{ Process = "msedge"; Driver = "msedgedriver" }
         }
-        Get-Process $browser[$type].Process | ForEach-Object { $_.CloseMainWindow() }
+        Get-Process $browser[$type].Process | ForEach-Object { $_.CloseMainWindow() } | Out-Null
         Wait-Process $browser[$type].Process -Timeout 10
         Get-Process $browser[$type].Process | Stop-Process -Force
         Wait-Process $browser[$type].Driver -Timeout 7

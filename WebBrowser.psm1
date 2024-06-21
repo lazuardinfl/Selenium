@@ -13,7 +13,8 @@ function Start-Browser {
         [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
         [Alias("UseUserProfile")] [string]$userProfile,
         [Alias("EnableLogging")] [switch]$log,
-        [Alias("DisableReloadOnFail")] [switch]$noRepeat
+        [Alias("DisableReloadOnFail")] [switch]$noRepeat,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     switch ($type) {
         "Chrome" {
@@ -27,7 +28,7 @@ function Start-Browser {
             $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
             $userData = "$($env:LOCALAPPDATA)\Microsoft\Edge\User Data"
         }
-        Default { return $null }
+        Default { if ($silent) { return $null } else { throw "Invalid browser type" } }
     }
     $options.AddArgument("ignore-ssl-errors")
     $options.AddArgument("ignore-certificate-errors")
@@ -44,21 +45,23 @@ function Start-Browser {
         elseif (Split-Path -Path $userProfile -IsAbsolute) {
             $options.AddArgument("user-data-dir=$($userProfile)")
         }
-        else { return $null }
+        elseif ($silent) { return $null }
+        else { throw "Invalid user profile" }
     }
     $maxtry = 3
-    for ($try = 0; $try -lt $maxtry; $try++) {
+    for ($try = 1; $try -le $maxtry; $try++) {
         try {
             switch ($type) {
                 "Edge" { $driver = [EdgeDriver]::new($options) }
                 "Chrome" { $driver = [ChromeDriver]::new($options) }
-                Default { return $null }
             }
             $driver.Manage().Window.Maximize()
             return $driver
         }
         catch {
-            if ($noRepeat) { break }
+            if (($try -eq $maxtry) -or $noRepeat) {
+                if ($silent) { return $null } else { throw }
+            }
             else {
                 Stop-Browser $driver -Force $type
                 Remove-Variable driver -Scope Local
@@ -67,7 +70,6 @@ function Start-Browser {
             }
         }
     }
-    return $null
 }
 
 function Stop-Browser {
@@ -98,30 +100,36 @@ function Stop-Browser {
 function Resume-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
     param (
-        [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type
+        [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     $debuggerAddress = "127.0.0.1:9222"
-    switch ($type) {
-        "Chrome" {
-            $options = [ChromeOptions]::new()
-            $options.DebuggerAddress = $debuggerAddress
-            return [ChromeDriver]::new($options)
+    try {
+        switch ($type) {
+            "Chrome" {
+                $options = [ChromeOptions]::new()
+                $options.DebuggerAddress = $debuggerAddress
+                return [ChromeDriver]::new($options)
+            }
+            "Edge" {
+                $options = [EdgeOptions]::new()
+                $options.DebuggerAddress = $debuggerAddress
+                return [EdgeDriver]::new($options)
+            }
+            Default { if ($silent) { return $null } else { throw "Invalid browser type" } }
         }
-        "Edge" {
-            $options = [EdgeOptions]::new()
-            $options.DebuggerAddress = $debuggerAddress
-            return [EdgeDriver]::new($options)
-        }
-        Default { return $null }
     }
+    catch { if ($silent) { return $null } else { throw } }
 }
 
 function Get-WebDriverWait {
     [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
-    return [WebDriverWait]::new($driver, (New-TimeSpan -Seconds 5))
+    try { return [WebDriverWait]::new($driver, (New-TimeSpan -Seconds 5)) }
+    catch { if ($silent) { return $null } else { throw } }
 }
 
 function Import-SeleniumBinary {

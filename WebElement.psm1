@@ -72,6 +72,7 @@ function Invoke-Click {
         [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
+        [Alias("WaitAfter")] [int]$sleep,
         [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
@@ -80,6 +81,7 @@ function Invoke-Click {
             "XPath" { $driver.FindElement([By]::XPath($value)).Click() }
             Default { throw "Invalid find by type" }
         }
+        Start-Sleep -Seconds $sleep
         return $true
     }
     catch { if ($silent) { return $false } else { throw } }
@@ -92,6 +94,7 @@ function Set-Text {
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("TextInput")] [string]$text,
+        [Alias("WaitAfter")] [int]$sleep,
         [Alias("EnterAfter")] [switch]$enter,
         [Alias("OnErrorContinue")] [switch]$silent
     )
@@ -108,40 +111,44 @@ function Set-Text {
             Start-Sleep -Seconds 1
             $field.SendKeys([Keys]::Enter)
         }
+        Start-Sleep -Seconds $sleep
         return $true
     }
     catch { if ($silent) { return $false } else { throw } }
 }
 
-function Switch-Handle ($driver, $wait, $by, $handle, $duration, $sleep) {
-    if ($null -eq $duration) {$duration = 1}
-    if ($null -eq $sleep) {$sleep = 1}
-    $wait.Timeout = New-TimeSpan -Seconds $duration
-    $switched = $wait.Until([Func[IWebDriver, bool]]{
-        try {
-            switch ($by) {
-                "alert" {
-                    switch ($handle) {
-                        "accept" {$driver.SwitchTo().Alert().Accept()}
-                        "dismiss" {$driver.SwitchTo().Alert().Dismiss()}
-                        Default {$driver.SwitchTo().Alert() | Out-Null}
-                    }
+function Switch-Handle {
+    [OutputType([bool])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("HandleType")] [ValidateSet("Alert", "Frame", "Tab", "Window")] [string]$handle,
+        [Alias("HandleValue")] [ArgumentCompletions("AcceptAlert", "DismissAlert", "BaseFrame", "ParentFrame")] $value,
+        [Alias("WaitAfter")] [int]$sleep = 1,
+        [Alias("OnErrorContinue")] [switch]$silent
+    )
+    try {
+        switch ($handle) {
+            "Alert" {
+                switch ($value) {
+                    "AcceptAlert" { $driver.SwitchTo().Alert().Accept() }
+                    "DismissAlert" { $driver.SwitchTo().Alert().Dismiss() }
+                    Default { throw "Invalid alert method" }
                 }
-                "frame" {
-                    switch ($handle) {
-                        "BaseFrame" {$driver.SwitchTo().DefaultContent() | Out-Null}
-                        "ParentFrame" {$driver.SwitchTo().ParentFrame() | Out-Null}
-                        Default {$driver.SwitchTo().Frame($handle) | Out-Null}
-                    }
-                }
-                {$by -in @("tab", "window")} {$driver.SwitchTo().Window($handle) | Out-Null}
-                Default {throw}
             }
-            return $true
+            "Frame" {
+                switch ($value) {
+                    "BaseFrame" { $driver.SwitchTo().DefaultContent() | Out-Null }
+                    "ParentFrame" { $driver.SwitchTo().ParentFrame() | Out-Null }
+                    Default { $driver.SwitchTo().Frame($value) | Out-Null }
+                }
+            }
+            { $handle -in @("Tab", "Window") } { $driver.SwitchTo().Window($value) | Out-Null }
+            Default { throw "Invalid handle type" }
         }
-        catch {return $null}
-    })
-    if ($switched -eq $true) {Start-Sleep -s $sleep}
+        Start-Sleep -Seconds $sleep
+        return $true
+    }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Invoke-ScrollToElement ($driver, $byElement, $value, $byScroll, $scroll, $duration, $scrollafter, $fail) {

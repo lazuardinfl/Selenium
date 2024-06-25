@@ -1,5 +1,6 @@
 using namespace OpenQA.Selenium
 using namespace System
+using namespace System.Management.Automation
 
 function Wait-Appear {
     [OutputType([OpenQA.Selenium.WebElement])]
@@ -9,22 +10,28 @@ function Wait-Appear {
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitDuration")] [int]$duration,
-        [Alias("WaitAfter")] [int]$sleep
+        [Alias("WaitAfter")] [int]$sleep,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     $wait.Timeout = New-TimeSpan -Seconds $duration
-    $appear = $wait.Until([Func[IWebDriver, WebElement]] {
-        try {
-            switch ($by) {
-                "Id" { $element = $driver.FindElement([By]::Id($value)) }
-                "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
-                Default { return $null }
+    $wait.Message = "Element $($by) '$($value)' not appear"
+    try {
+        $appear = $wait.Until([Func[IWebDriver, WebElement]] {
+            try {
+                switch ($by) {
+                    "Id" { $element = $driver.FindElement([By]::Id($value)) }
+                    "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
+                    Default { throw [ValidationMetadataException] "Invalid find by type" }
+                }
+                return $element.Displayed -and $element.Enabled ? $element : $null
             }
-            return $element.Displayed -and $element.Enabled ? $element : $null
-        }
-        catch { return $null }
-    })
-    if ($appear) { Start-Sleep -Seconds $sleep }
-    return $appear
+            catch [ValidationMetadataException] { throw }
+            catch { return $null }
+        })
+        Start-Sleep -Seconds $sleep
+        return $appear
+    }
+    catch { if ($silent) { return $null } else { throw } }
 }
 
 function Wait-Disappear {
@@ -35,22 +42,28 @@ function Wait-Disappear {
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitDuration")] [int]$duration,
-        [Alias("WaitAfter")] [int]$sleep
+        [Alias("WaitAfter")] [int]$sleep,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     $wait.Timeout = New-TimeSpan -Seconds $duration
-    $disappear = $wait.Until([Func[IWebDriver, bool]] {
-        try {
-            switch ($by) {
-                "Id" { $element = $driver.FindElement([By]::Id($value)) }
-                "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
-                Default { return $null }
+    $wait.Message = "Element $($by) '$($value)' not disappear"
+    try {
+        $disappear = $wait.Until([Func[IWebDriver, bool]] {
+            try {
+                switch ($by) {
+                    "Id" { $element = $driver.FindElement([By]::Id($value)) }
+                    "XPath" { $element = $driver.FindElement([By]::XPath($value)) }
+                    Default { throw [ValidationMetadataException] "Invalid find by type" }
+                }
+                return !$element.Displayed
             }
-            return $element.Displayed ? $false : $true
-        }
-        catch { return $true }
-    })
-    if ($disappear) { Start-Sleep -Seconds $sleep }
-    return $disappear ? $true : $false
+            catch [ValidationMetadataException] { throw }
+            catch { return $true }
+        })
+        Start-Sleep -Seconds $sleep
+        return $disappear
+    }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Invoke-Click {
@@ -58,16 +71,18 @@ function Invoke-Click {
     param (
         [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
-        [Alias("Element")] [string]$value
+        [Alias("Element")] [string]$value,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
         switch ($by) {
             "Id" { $driver.FindElement([By]::Id($value)).Click() }
             "XPath" { $driver.FindElement([By]::XPath($value)).Click() }
+            Default { throw "Invalid find by type" }
         }
         return $true
     }
-    catch { return $false }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Set-Text {
@@ -77,12 +92,14 @@ function Set-Text {
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("TextInput")] [string]$text,
-        [Alias("EnterAfter")] [switch]$enter
+        [Alias("EnterAfter")] [switch]$enter,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
         switch ($by) {
             "Id" { $field = $driver.FindElement([By]::Id($value)) }
             "XPath" { $field = $driver.FindElement([By]::XPath($value)) }
+            Default { throw "Invalid find by type" }
         }
         $field.Click()
         $field.Clear()
@@ -93,7 +110,7 @@ function Set-Text {
         }
         return $true
     }
-    catch { return $false }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Switch-Handle ($driver, $wait, $by, $handle, $duration, $sleep) {

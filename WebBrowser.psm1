@@ -116,7 +116,7 @@ function Resume-Browser {
                 $options.DebuggerAddress = $debuggerAddress
                 return [EdgeDriver]::new($options)
             }
-            Default { if ($silent) { return $null } else { throw "Invalid browser type" } }
+            Default { throw "Invalid browser type" }
         }
     }
     catch { if ($silent) { return $null } else { throw } }

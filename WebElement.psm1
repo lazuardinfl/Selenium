@@ -1,4 +1,5 @@
 using namespace OpenQA.Selenium
+using namespace OpenQA.Selenium.Support.UI
 using namespace System
 using namespace System.Management.Automation
 
@@ -154,26 +155,39 @@ function Switch-Handle {
     catch { if ($silent) { return $false } else { throw } }
 }
 
-function Invoke-ScrollToElement ($driver, $byElement, $value, $byScroll, $scroll, $duration, $scrollafter, $fail) {
-    Wait-Loop @{
-        action = {
+function Invoke-ScrollToElement {
+    [OutputType([bool])]
+    param (
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("FindElementBy")] [ValidateSet("Id", "XPath")] [string]$elementBy,
+        [Alias("Element")] [string]$elementValue,
+        [Alias("FindScrollBy")] [ValidateSet("Id", "XPath")] [string]$scrollBy,
+        [Alias("Scroll")] [string]$scrollValue,
+        [Alias("WaitDuration")] [int]$duration,
+        [Alias("ScrollAgain")] [int]$scrollAfter,
+        [Alias("OnErrorContinue")] [switch]$silent
+    )
+    try {
+        $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $duration))
+        $wait.PollingInterval = New-TimeSpan -Milliseconds 1
+        $wait.Message = "Scroll failed to element $($elementBy) '$($elementValue)'"
+        $found = $wait.Until([Func[IWebDriver, bool]] {
             try {
-                switch ($byElement) {
-                    "id" {$element = $driver.FindElement([By]::Id($value))}
-                    "xpath" {$element = $driver.FindElement([By]::XPath($value))}
-                    Default {}
-                }
-                if (($element.Displayed -and $element.Enabled) -eq $true) {
-                    try {for ($i = 0; $i -lt $scrollafter; $i++) {Invoke-Click $driver $byScroll $scroll}} catch {}
-                    return $true
-                }
-                else {throw}
+                $element = Find-Element $driver $elementBy $elementValue
+                if ($element.Displayed -and $element.Enabled) { return $true }
             }
-            catch {Invoke-Click $driver $byScroll $scroll}
+            catch [ValidationMetadataException] { throw }
+            catch {}
+            Invoke-Click $driver $scrollBy $scrollValue | Out-Null
+        })
+        if ($found) {
+            for ($i = 0; $i -lt $scrollAfter; $i++) {
+                Invoke-Click $driver $scrollBy $scrollValue | Out-Null
+            }
         }
-        timeout = {if ($null -ne $fail) {Stop-Error $fail}}
-        duration = New-TimeSpan -Seconds $duration
+        return $found
     }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Update-AutomationElements ($type, $old, $new) {

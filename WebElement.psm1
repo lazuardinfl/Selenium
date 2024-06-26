@@ -1,6 +1,6 @@
 using namespace OpenQA.Selenium
+using namespace OpenQA.Selenium.Interactions
 using namespace OpenQA.Selenium.Support.UI
-using namespace System
 using namespace System.Management.Automation
 
 function Find-Element {
@@ -159,6 +159,7 @@ function Invoke-ScrollToElement {
     [OutputType([bool])]
     param (
         [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("ScrollType")] [ValidateSet("Native", "HTML")] [string]$type,
         [Alias("FindElementBy")] [ValidateSet("Id", "XPath")] [string]$elementBy,
         [Alias("Element")] [string]$elementValue,
         [Alias("FindScrollBy")] [ValidateSet("Id", "XPath")] [string]$scrollBy,
@@ -168,24 +169,26 @@ function Invoke-ScrollToElement {
         [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
-        $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $duration))
-        $wait.PollingInterval = New-TimeSpan -Milliseconds 1
-        $wait.Message = "Scroll failed to element $($elementBy) '$($elementValue)'"
-        $found = $wait.Until([Func[IWebDriver, bool]] {
-            try {
-                $element = Find-Element $driver $elementBy $elementValue
-                if ($element.Displayed -and $element.Enabled) { return $true }
+        switch ($type) {
+            "Native" { [Actions]::new($driver).ScrollToElement((Find-Element $driver $elementBy $elementValue)).Perform() }
+            "HTML" {
+                $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $duration))
+                $wait.PollingInterval = New-TimeSpan -Milliseconds 1
+                $wait.Message = "Scroll failed to element $($elementBy) '$($elementValue)'"
+                $found = $wait.Until([Func[IWebDriver, bool]] {
+                    try {
+                        $element = Find-Element $driver $elementBy $elementValue
+                        if ($element.Displayed -and $element.Enabled) { return $true }
+                    }
+                    catch [ValidationMetadataException] { throw }
+                    catch {}
+                    Invoke-Click $driver $scrollBy $scrollValue | Out-Null
+                })
+                if ($found) { for ($i = 0; $i -lt $scrollAfter; $i++) { Invoke-Click $driver $scrollBy $scrollValue | Out-Null } }
+                return $found
             }
-            catch [ValidationMetadataException] { throw }
-            catch {}
-            Invoke-Click $driver $scrollBy $scrollValue | Out-Null
-        })
-        if ($found) {
-            for ($i = 0; $i -lt $scrollAfter; $i++) {
-                Invoke-Click $driver $scrollBy $scrollValue | Out-Null
-            }
+            Default { throw "Invalid scroll type" }
         }
-        return $found
     }
     catch { if ($silent) { return $false } else { throw } }
 }

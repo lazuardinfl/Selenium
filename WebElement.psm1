@@ -193,18 +193,19 @@ function Invoke-ScrollToElement {
     catch { if ($silent) { return $false } else { throw } }
 }
 
-function Update-AutomationElements ($type, $old, $new) {
-    switch ($type) {
-        {$type -in @("id", "all")} {
-            @($Id.GetEnumerator() | Where-Object {$_.Value -match $old}) | ForEach-Object {
-                $Id[$_.Key] = $Id[$_.Key] -replace $old, $new
-            }
+function Update-Elements {
+    [OutputType([hashtable])]
+    param (
+        [Alias("Hashtable")] [hashtable]$hash,
+        [Alias("OldValue")] $old,
+        [Alias("NewValue")] $new,
+        [Alias("OnErrorContinue")] [switch]$silent
+    )
+    try {
+        @($hash.GetEnumerator() | Where-Object { $_.Value -match $old }) | ForEach-Object {
+            $hash[$_.Key] = $hash[$_.Key] -replace $old, $new
         }
-        {$type -in @("xpath", "all")} {
-            @($XPath.GetEnumerator() | Where-Object {$_.Value -match $old}) | ForEach-Object {
-                $XPath[$_.Key] = $XPath[$_.Key] -replace $old, $new
-            }
-        }
-        Default {}
+        return $hash
     }
+    catch { if ($silent) { return $null } else { throw } }
 }

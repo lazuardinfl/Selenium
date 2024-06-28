@@ -6,7 +6,7 @@ using namespace System.Management.Automation
 function Find-Element {
     [OutputType([OpenQA.Selenium.WebElement])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("OnErrorContinue")] [switch]$silent
@@ -24,8 +24,8 @@ function Find-Element {
 function Wait-Appear {
     [OutputType([OpenQA.Selenium.WebElement])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
-        [Alias("WebDriverWait")] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriverWait")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitDuration")] [int]$duration,
@@ -52,8 +52,8 @@ function Wait-Appear {
 function Wait-Disappear {
     [OutputType([bool])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
-        [Alias("WebDriverWait")] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriverWait")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitDuration")] [int]$duration,
@@ -80,7 +80,7 @@ function Wait-Disappear {
 function Invoke-Click {
     [OutputType([bool])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitAfter")] [int]$sleep,
@@ -98,7 +98,7 @@ function Invoke-Click {
 function Set-Text {
     [OutputType([bool])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("TextInput")] [string]$text,
@@ -124,7 +124,7 @@ function Set-Text {
 function Switch-Handle {
     [OutputType([bool])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("HandleType")] [ValidateSet("Alert", "Frame", "Tab", "Window")] [string]$handle,
         [Alias("HandleValue")] [ArgumentCompletions("AcceptAlert", "DismissAlert", "BaseFrame", "ParentFrame")] $value,
         [Alias("WaitAfter")] [int]$sleep = 1,
@@ -158,7 +158,7 @@ function Switch-Handle {
 function Invoke-ScrollToElement {
     [OutputType([bool])]
     param (
-        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("ScrollType")] [ValidateSet("Native", "HTML")] [string]$type,
         [Alias("FindElementBy")] [ValidateSet("Id", "XPath")] [string]$elementBy,
         [Alias("Element")] [string]$elementValue,
@@ -196,7 +196,7 @@ function Invoke-ScrollToElement {
 function Update-Elements {
     [OutputType([hashtable])]
     param (
-        [Alias("Hashtable")] [hashtable]$hash,
+        [Alias("Hashtable")] [ValidateNotNullOrWhiteSpace()] [hashtable]$hash,
         [Alias("OldValue")] $old,
         [Alias("NewValue")] $new,
         [Alias("OnErrorContinue")] [switch]$silent

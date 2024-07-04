@@ -72,7 +72,7 @@ function Start-Browser {
 
 function Stop-Browser {
     param (
-        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("WaitAfter")] [int]$sleep,
         [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type
     )

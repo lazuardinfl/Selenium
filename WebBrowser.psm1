@@ -120,6 +120,27 @@ function Resume-Browser {
     catch { if ($silent) { return $null } else { throw } }
 }
 
+function Invoke-BrowserNavigation {
+    param (
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("NavigationMethod")] [ArgumentCompletions("protocol://url", "Back", "Forward", "Refresh",
+            "FullScreen", "Maximize", "Minimize")] [string]$method,
+        [Alias("OnErrorContinue")] [switch]$silent
+    )
+    try {
+        switch ($method) {
+            "Back" { $driver.Navigate().Back() }
+            "Forward" { $driver.Navigate().Forward() }
+            "Refresh" { $driver.Navigate().Forward() }
+            "FullScreen" { $driver.Manage().Window.FullScreen() }
+            "Maximize" { $driver.Manage().Window.Maximize() }
+            "Minimize" { $driver.Manage().Window.Minimize() }
+            Default { $driver.Navigate().GoToUrl($method) }
+        }
+    }
+    catch { if ($silent) { return $null } else { throw } }
+}
+
 function Get-WebDriverWait {
     [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
     param (

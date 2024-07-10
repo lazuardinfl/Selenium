@@ -1,6 +1,7 @@
 using namespace OpenQA.Selenium
 using namespace OpenQA.Selenium.Interactions
 using namespace OpenQA.Selenium.Support.UI
+using namespace System
 using namespace System.Management.Automation
 
 function Find-Element {
@@ -21,60 +22,48 @@ function Find-Element {
     catch { if ($silent) { return $null } else { throw } }
 }
 
-function Wait-Appear {
+function Wait-Element {
     [OutputType([OpenQA.Selenium.WebElement])]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("WebDriverWait")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
+        [Alias("WaitMethod")] [ValidateSet("Appear", "Disappear")] [string]$method,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
         [Alias("WaitDuration")] [int]$duration,
         [Alias("WaitAfter")] [int]$sleep,
         [Alias("OnErrorContinue")] [switch]$silent
     )
-    $wait.Timeout = New-TimeSpan -Seconds $duration
-    $wait.Message = "Element $($by) '$($value)' not appear"
     try {
-        $appear = $wait.Until([Func[IWebDriver, WebElement]] {
-            try {
-                $element = Find-Element $driver $by $value
-                return $element.Displayed -and $element.Enabled ? $element : $null
+        $wait.Timeout = New-TimeSpan -Seconds $duration
+        $wait.Message = "Element $($by) '$($value)' not $($method.ToLower())"
+        $found = switch ($method) {
+            "Appear" {
+                $wait.Until([Func[IWebDriver, WebElement]]{
+                    try {
+                        $element = Find-Element $driver $by $value
+                        return $element.Displayed -and $element.Enabled ? $element : $null
+                    }
+                    catch [ValidationMetadataException] { throw }
+                    catch { return $null }
+                })
             }
-            catch [ValidationMetadataException] { throw }
-            catch { return $null }
-        })
-        Start-Sleep -Seconds $sleep
-        return $appear
-    }
-    catch { if ($silent) { return $null } else { throw } }
-}
-
-function Wait-Disappear {
-    [OutputType([bool])]
-    param (
-        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
-        [Alias("WebDriverWait")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.Support.UI.WebDriverWait]$wait,
-        [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
-        [Alias("Element")] [string]$value,
-        [Alias("WaitDuration")] [int]$duration,
-        [Alias("WaitAfter")] [int]$sleep,
-        [Alias("OnErrorContinue")] [switch]$silent
-    )
-    $wait.Timeout = New-TimeSpan -Seconds $duration
-    $wait.Message = "Element $($by) '$($value)' not disappear"
-    try {
-        $disappear = $wait.Until([Func[IWebDriver, bool]] {
-            try {
-                $element = Find-Element $driver $by $value
-                return !$element.Displayed
+            "Disappear" {
+                $wait.Until([Func[IWebDriver, bool]]{
+                    try {
+                        $element = Find-Element $driver $by $value
+                        return !$element.Displayed
+                    }
+                    catch [ValidationMetadataException] { throw }
+                    catch { return $true }
+                })
             }
-            catch [ValidationMetadataException] { throw }
-            catch { return $true }
-        })
+            Default { throw "Invalid wait element method type" }
+        }
         Start-Sleep -Seconds $sleep
-        return $disappear
+        return $found
     }
-    catch { if ($silent) { return $false } else { throw } }
+    catch { if ($silent) { return $method -eq "Disappear" ? $false : $null } else { throw } }
 }
 
 function Invoke-Click {

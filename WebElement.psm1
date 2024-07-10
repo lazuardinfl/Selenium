@@ -30,12 +30,12 @@ function Wait-Element {
         [Alias("WaitMethod")] [ValidateSet("Appear", "Disappear")] [string]$method,
         [Alias("FindBy")] [ValidateSet("Id", "XPath")] [string]$by,
         [Alias("Element")] [string]$value,
-        [Alias("WaitDuration")] [int]$duration,
+        [Alias("TimeoutDuration")] [int]$timeout,
         [Alias("WaitAfter")] [int]$sleep,
         [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
-        $wait.Timeout = New-TimeSpan -Seconds $duration
+        $wait.Timeout = New-TimeSpan -Seconds $timeout
         $wait.Message = "Element $($by) '$($value)' not $($method.ToLower())"
         $found = switch ($method) {
             "Appear" {
@@ -153,7 +153,7 @@ function Invoke-ScrollToElement {
         [Alias("Element")] [string]$elementValue,
         [Alias("FindScrollBy")] [ValidateSet("Id", "XPath")] [string]$scrollBy,
         [Alias("Scroll")] [string]$scrollValue,
-        [Alias("WaitDuration")] [int]$duration,
+        [Alias("TimeoutDuration")] [int]$timeout,
         [Alias("ScrollAgain")] [int]$scrollAfter,
         [Alias("OnErrorContinue")] [switch]$silent
     )
@@ -161,7 +161,7 @@ function Invoke-ScrollToElement {
         switch ($type) {
             "Native" { [Actions]::new($driver).ScrollToElement((Find-Element $driver $elementBy $elementValue)).Perform() }
             "HTML" {
-                $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $duration))
+                $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $timeout))
                 $wait.PollingInterval = New-TimeSpan -Milliseconds 1
                 $wait.Message = "Scroll failed to element $($elementBy) '$($elementValue)'"
                 $found = $wait.Until([Func[IWebDriver, bool]] {

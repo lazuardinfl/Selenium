@@ -141,7 +141,7 @@ function Invoke-BrowserNavigation {
     catch { if ($silent) { return $null } else { throw } }
 }
 
-function Get-WebDriverWait {
+function Get-DriverWait {
     [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,

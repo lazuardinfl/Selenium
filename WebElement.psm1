@@ -110,12 +110,30 @@ function Set-Text {
     catch { if ($silent) { return $false } else { throw } }
 }
 
+function Get-Handle {
+    [OutputType([string[]])]
+    param (
+        [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
+        [Alias("HandleScope")] [ValidateSet("Current", "All")] [string]$scope,
+        [Alias("OnErrorContinue")] [switch]$silent
+    )
+    try {
+        switch ($scope) {
+            "Current" { return $driver.CurrentWindowHandle }
+            "All" { return $driver.WindowHandles }
+            Default { throw "Invalid handle scope" }
+        }
+    }
+    catch { if ($silent) { return $null } else { throw } }
+}
+
 function Switch-Handle {
     [OutputType([bool])]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("HandleType")] [ValidateSet("Alert", "Frame", "Tab", "Window")] [string]$handle,
-        [Alias("HandleValue")] [ArgumentCompletions("AcceptAlert", "DismissAlert", "BaseFrame", "ParentFrame")] $value,
+        [Alias("HandleValue")] [ArgumentCompletions("AcceptAlert", "DismissAlert", "BaseFrame", "ParentFrame", "FrameValue",
+            "NewTab", "NewWindow", "WindowValue")] $value,
         [Alias("WaitAfter")] [int]$sleep = 1,
         [Alias("OnErrorContinue")] [switch]$silent
     )
@@ -135,7 +153,13 @@ function Switch-Handle {
                     Default { $driver.SwitchTo().Frame($value) | Out-Null }
                 }
             }
-            { $handle -in @("Tab", "Window") } { $driver.SwitchTo().Window($value) | Out-Null }
+            { $handle -in @("Tab", "Window") } {
+                switch ($value) {
+                    "NewTab" { $driver.SwitchTo().NewWindow([WindowType]::Tab) | Out-Null }
+                    "NewWindow" { $driver.SwitchTo().NewWindow([WindowType]::Window) | Out-Null }
+                    Default { $driver.SwitchTo().Window($value) | Out-Null }
+                }
+            }
             Default { throw "Invalid handle type" }
         }
         Start-Sleep -Seconds $sleep

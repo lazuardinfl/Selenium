@@ -73,12 +73,12 @@ function Start-Browser {
 function Stop-Browser {
     param (
         [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
-        [Alias("WaitAfter")] [int]$sleep,
-        [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type
+        [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type,
+        [Alias("CurrentHandleOnly")] [switch]$current
     )
     try {
-        $driver.Close()
-        $driver.Quit()
+        if ($current) { $driver.Close() }
+        else { $driver.Quit() }
     }
     catch {}
     if ($type) {
@@ -92,7 +92,6 @@ function Stop-Browser {
         Wait-Process $browser[$type].Driver -Timeout 7
         Get-Process $browser[$type].Driver | Stop-Process -Force
     }
-    Start-Sleep -Seconds $sleep
 }
 
 function Resume-Browser {

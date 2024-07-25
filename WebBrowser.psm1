@@ -3,8 +3,6 @@ using namespace OpenQA.Selenium.Chrome
 using namespace OpenQA.Selenium.Edge
 using namespace OpenQA.Selenium.Support.UI
 
-$env:SE_MANAGER_PATH = "$($PSScriptRoot)\Manager\selenium-manager.exe"
-
 function Start-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
     param (
@@ -150,7 +148,7 @@ function Get-DriverWait {
     catch { if ($silent) { return $null } else { throw } }
 }
 
-function Set-SeleniumPrivateEnvironment {
+function Set-PrivateEnvironment {
     param (
         [Alias("SeleniumUrl")] [string]$url
     )

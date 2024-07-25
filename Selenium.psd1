@@ -54,13 +54,12 @@ Description = 'Selenium helper for PowerShell'
 # RequiredModules = @()
 
 # Assemblies that must be loaded prior to importing this module
-RequiredAssemblies = @(
-    'Assemblies\WebDriver.dll',
-    'Assemblies\WebDriver.Support.dll'
-)
+# RequiredAssemblies = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-# ScriptsToProcess = @()
+ScriptsToProcess = @(
+    'SeleniumInitialize.ps1'
+)
 
 # Type files (.ps1xml) to be loaded when importing this module
 # TypesToProcess = @()
@@ -93,9 +92,7 @@ NestedModules = @(
 # ModuleList = @()
 
 # List of all files packaged with this module
-FileList = @(
-    'Manager\selenium-manager.exe'
-)
+# FileList = @()
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

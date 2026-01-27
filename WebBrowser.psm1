@@ -2,6 +2,7 @@ using namespace OpenQA.Selenium
 using namespace OpenQA.Selenium.Chrome
 using namespace OpenQA.Selenium.Edge
 using namespace OpenQA.Selenium.Support.UI
+using namespace System.Security.Principal
 
 function Start-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
@@ -19,7 +20,6 @@ function Start-Browser {
         }
         "Edge" {
             $options = [EdgeOptions]::new()
-            $options.AddArgument("do-not-de-elevate") # prevent error when run as admin
             $options.AddArgument("enable-features=msEdgeTowerAutoHide")
             $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
             $userData = "$($env:LOCALAPPDATA)\Microsoft\Edge\User Data"
@@ -32,6 +32,7 @@ function Start-Browser {
     $options.AddExcludedArgument("enable-automation")
     $options.AddUserProfilePreference("credentials_enable_service", $false)
     $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
+    if ([WindowsPrincipal]::new([WindowsIdentity]::GetCurrent()).IsInRole([WindowsBuiltInRole]::Administrator)) { $options.AddArgument("do-not-de-elevate") }
     if (!$log) { $options.AddExcludedArgument("enable-logging") }
     if ($userProfile) {
         if (Test-Path -Path "$($userData)\$($userProfile)") {

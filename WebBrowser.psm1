@@ -60,9 +60,9 @@ function Start-Browser {
                 if ($silent) { return $null } else { throw }
             }
             else {
-                Stop-Browser $driver -Force $type
-                Remove-Variable driver -Scope Local
-                Remove-Variable driver -Scope Script
+                Stop-Browser $driver -Force $type -OnErrorContinue | Out-Null
+                Remove-Variable driver -Scope Local -ErrorAction SilentlyContinue
+                Remove-Variable driver -Scope Script -ErrorAction SilentlyContinue
                 Start-Sleep -Seconds 5
             }
         }
@@ -70,27 +70,38 @@ function Start-Browser {
 }
 
 function Stop-Browser {
+    [OutputType([bool])]
     param (
         [Alias("WebDriver")] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("Force")] [ValidateSet("Chrome", "Edge")] [string]$type,
-        [Alias("CurrentHandleOnly")] [switch]$current
+        [Alias("CurrentHandleOnly")] [switch]$current,
+        [Alias("OnErrorContinue")] [switch]$silent
     )
     try {
-        if ($current) { $driver.Close() }
-        else { $driver.Quit() }
-    }
-    catch {}
-    if ($type) {
-        $browser = @{
-            Chrome = @{ Process = "chrome"; Driver = "chromedriver" }
-            Edge = @{ Process = "msedge"; Driver = "msedgedriver" }
+        if (!($driver -or $type)) { throw "Invalid parameter" }
+        if ($driver) {
+            if ($current) { $driver.Close() }
+            else { $driver.Quit() }
         }
-        Get-Process $browser[$type].Process | ForEach-Object { $_.CloseMainWindow() } | Out-Null
-        Wait-Process $browser[$type].Process -Timeout 10
-        Get-Process $browser[$type].Process | Stop-Process -Force
-        Wait-Process $browser[$type].Driver -Timeout 7
-        Get-Process $browser[$type].Driver | Stop-Process -Force
+        if ($type) {
+            $browser = @{
+                Chrome = @{ Process = "chrome"; Driver = "chromedriver" }
+                Edge = @{ Process = "msedge"; Driver = "msedgedriver" }
+            }
+            $procs = @($browser[$type].Process, $browser[$type].Driver)
+            if (Get-Process $procs -ErrorAction SilentlyContinue) {
+                Get-Process $browser[$type].Process -ErrorAction SilentlyContinue | ForEach-Object { $_.CloseMainWindow() } | Out-Null
+                for ($i = 0; $i -lt 7; $i++) {
+                    Get-Process $procs -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+                    if (!(Get-Process $procs -ErrorAction SilentlyContinue)) { return $true }
+                    Start-Sleep -Seconds 1
+                }
+                throw "Stop browser failed"
+            }
+        }
+        return $true
     }
+    catch { if ($silent) { return $false } else { throw } }
 }
 
 function Resume-Browser {

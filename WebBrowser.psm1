@@ -9,6 +9,7 @@ function Start-Browser {
     param (
         [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
         [Alias("UseUserProfile")] [string]$userProfile,
+        [Alias("HeadlessMode")] [switch]$headless,
         [Alias("EnableLogging")] [switch]$log,
         [Alias("DisableReloadOnFail")] [switch]$noRepeat,
         [Alias("OnErrorContinue")] [switch]$silent
@@ -34,6 +35,7 @@ function Start-Browser {
     $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
     if ([WindowsPrincipal]::new([WindowsIdentity]::GetCurrent()).IsInRole([WindowsBuiltInRole]::Administrator)) { $options.AddArgument("do-not-de-elevate") }
     if (!$log) { $options.AddExcludedArgument("enable-logging") }
+    if ($headless) { $options.AddArgument("headless") }
     if ($userProfile) {
         if (Test-Path -Path "$($userData)\$($userProfile)") {
             $options.AddArgument("user-data-dir=$($userData)")

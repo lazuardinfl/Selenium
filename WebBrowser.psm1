@@ -2,73 +2,76 @@ using namespace OpenQA.Selenium
 using namespace OpenQA.Selenium.Chrome
 using namespace OpenQA.Selenium.Edge
 using namespace OpenQA.Selenium.Support.UI
+using namespace System.Management.Automation
 using namespace System.Security.Principal
 
 function Start-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
     param (
         [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
-        [Alias("UseUserProfile")] [string]$userProfile,
+        [Alias("Profile")] [ArgumentCompletions("Temporary", "Default", "Custom")] [string]$userProfile,
+        [Alias("AddArguments")] [string[]]$arguments,
+        [Alias("AddExcludedArguments")] [string[]]$exArguments,
         [Alias("HeadlessMode")] [switch]$headless,
         [Alias("EnableLogging")] [switch]$log,
         [Alias("DisableReloadOnFail")] [switch]$noRepeat,
         [Alias("OnErrorContinue")] [switch]$silent
     )
-    switch ($type) {
-        "Chrome" {
-            $options = [ChromeOptions]::new()
-            $userData = "$($env:LOCALAPPDATA)\Google\Chrome\User Data"
-        }
-        "Edge" {
-            $options = [EdgeOptions]::new()
-            $options.AddArgument("enable-features=msEdgeTowerAutoHide")
-            $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
-            $userData = "$($env:LOCALAPPDATA)\Microsoft\Edge\User Data"
-        }
-        Default { if ($silent) { return $null } else { throw "Invalid browser type" } }
-    }
-    $options.AddArgument("ignore-ssl-errors")
-    $options.AddArgument("ignore-certificate-errors")
-    $options.AddArgument("remote-debugging-port=9222")
-    $options.AddExcludedArgument("enable-automation")
-    $options.AddUserProfilePreference("credentials_enable_service", $false)
-    $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
-    if ([WindowsPrincipal]::new([WindowsIdentity]::GetCurrent()).IsInRole([WindowsBuiltInRole]::Administrator)) { $options.AddArgument("do-not-de-elevate") }
-    if (!$log) { $options.AddExcludedArgument("enable-logging") }
-    if ($headless) { $options.AddArgument("headless") }
-    if ($userProfile) {
-        if (Test-Path -Path "$($userData)\$($userProfile)") {
-            $options.AddArgument("user-data-dir=$($userData)")
-            $options.AddArgument("profile-directory=$($userProfile)")
-        }
-        elseif (Split-Path -Path $userProfile -IsAbsolute) {
-            $options.AddArgument("user-data-dir=$($userProfile)")
-        }
-        elseif ($silent) { return $null }
-        else { throw "Invalid user profile" }
-    }
-    $maxtry = 3
-    for ($try = 1; $try -le $maxtry; $try++) {
-        try {
-            switch ($type) {
-                "Edge" { $driver = [EdgeDriver]::new($options) }
-                "Chrome" { $driver = [ChromeDriver]::new($options) }
+    try {
+        switch ($type) {
+            "Chrome" {
+                $options = [ChromeOptions]::new()
+                $userData = "$env:LOCALAPPDATA\Google\Chrome\User Data"
             }
-            $driver.Manage().Window.Maximize()
-            return $driver
-        }
-        catch {
-            if (($try -eq $maxtry) -or $noRepeat) {
-                if ($silent) { return $null } else { throw }
+            "Edge" {
+                $options = [EdgeOptions]::new()
+                $options.AddArgument("enable-features=msEdgeTowerAutoHide")
+                $options.AddUserProfilePreference("user_experience_metrics.personalization_data_consent_enabled", $true)
+                $userData = "$env:LOCALAPPDATA\Microsoft\Edge\User Data"
             }
-            else {
-                Stop-Browser $driver -Force $type -OnErrorContinue | Out-Null
-                Remove-Variable driver -Scope Local -ErrorAction SilentlyContinue
-                Remove-Variable driver -Scope Script -ErrorAction SilentlyContinue
-                Start-Sleep -Seconds 5
+            Default { throw [ValidationMetadataException] "Invalid browser type" }
+        }
+        $options.AddArgument("ignore-ssl-errors")
+        $options.AddArgument("ignore-certificate-errors")
+        $options.AddArgument("remote-debugging-port=9222")
+        $options.AddExcludedArgument("enable-automation")
+        $options.AddUserProfilePreference("credentials_enable_service", $false)
+        $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
+        if ([WindowsPrincipal]::new([WindowsIdentity]::GetCurrent()).IsInRole([WindowsBuiltInRole]::Administrator)) { $options.AddArgument("do-not-de-elevate") }
+        if (!$log) { $options.AddExcludedArgument("enable-logging") }
+        if ($headless) { $options.AddArgument("headless") }
+        if ($userProfile -and ($userProfile -ne "Temporary")) {
+            if (Test-Path -Path "$userData\$userProfile") {
+                $options.AddArgument("user-data-dir=$userData")
+                $options.AddArgument("profile-directory=$userProfile")
+            }
+            elseif (Split-Path -Path $userProfile -IsAbsolute) { $options.AddArgument("user-data-dir=$userProfile") }
+            else { throw [ValidationMetadataException] "Invalid user profile" }
+        }
+        foreach ($arg in $arguments) { $options.AddArgument($arg) }
+        foreach ($arg in $exArguments) { $options.AddExcludedArgument($arg) }
+        $maxtry = 3
+        for ($try = 1; $try -le $maxtry; $try++) {
+            try {
+                switch ($type) {
+                    "Edge" { $driver = [EdgeDriver]::new($options) }
+                    "Chrome" { $driver = [ChromeDriver]::new($options) }
+                }
+                $driver.Manage().Window.Maximize()
+                return $driver
+            }
+            catch {
+                if (($try -eq $maxtry) -or $noRepeat) { throw }
+                else {
+                    Stop-Browser $driver -Force $type -OnErrorContinue | Out-Null
+                    Remove-Variable driver -Scope Local -ErrorAction SilentlyContinue
+                    Remove-Variable driver -Scope Script -ErrorAction SilentlyContinue
+                    Start-Sleep -Seconds 5
+                }
             }
         }
     }
+    catch { if ($silent) { return $null } else { throw } }
 }
 
 function Stop-Browser {
@@ -142,7 +145,7 @@ function Invoke-BrowserNavigation {
         switch ($method) {
             "Back" { $driver.Navigate().Back() }
             "Forward" { $driver.Navigate().Forward() }
-            "Refresh" { $driver.Navigate().Forward() }
+            "Refresh" { $driver.Navigate().Refresh() }
             "FullScreen" { $driver.Manage().Window.FullScreen() }
             "Maximize" { $driver.Manage().Window.Maximize() }
             "Minimize" { $driver.Manage().Window.Minimize() }

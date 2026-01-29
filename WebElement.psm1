@@ -36,7 +36,7 @@ function Wait-Element {
     )
     try {
         $wait.Timeout = New-TimeSpan -Seconds $timeout
-        $wait.Message = "Element $($by) '$($value)' not $($method.ToLower())"
+        $wait.Message = "Element $by '$value' not $($method.ToLower())"
         $found = switch ($method) {
             "Appear" {
                 $wait.Until([Func[IWebDriver, WebElement]]{
@@ -187,7 +187,7 @@ function Invoke-ScrollToElement {
             "HTML" {
                 $wait = [WebDriverWait]::new($driver, (New-TimeSpan -Seconds $timeout))
                 $wait.PollingInterval = New-TimeSpan -Milliseconds 1
-                $wait.Message = "Scroll failed to element $($elementBy) '$($elementValue)'"
+                $wait.Message = "Scroll failed to element $elementBy '$elementValue'"
                 $found = $wait.Until([Func[IWebDriver, bool]] {
                     try {
                         $element = Find-Element $driver $elementBy $elementValue

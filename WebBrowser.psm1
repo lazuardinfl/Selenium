@@ -144,7 +144,8 @@ function Resume-Browser {
     catch { if ($silent) { return $null } else { throw } }
 }
 
-function Invoke-BrowserNavigation {
+function Invoke-Browser {
+    [Alias("Invoke-BrowserNavigation")]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
         [Alias("NavigationMethod")] [ArgumentCompletions("protocol://url", "Back", "Forward", "Refresh",
@@ -165,7 +166,8 @@ function Invoke-BrowserNavigation {
     catch { if ($silent) { return $null } else { throw } }
 }
 
-function Get-DriverWait {
+function Get-WebDriverWait {
+    [Alias("Get-DriverWait")]
     [OutputType([OpenQA.Selenium.Support.UI.WebDriverWait])]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,
@@ -176,6 +178,7 @@ function Get-DriverWait {
 }
 
 function Set-PrivateEnvironment {
+    [Alias("Set-SeleniumPrivateEnvironment")]
     param (
         [Alias("SeleniumUrl")] [string]$url
     )

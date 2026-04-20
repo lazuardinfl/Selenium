@@ -168,7 +168,8 @@ function Switch-Handle {
     catch { if ($silent) { return $false } else { throw } }
 }
 
-function Invoke-ScrollToElement {
+function Invoke-Scroll {
+    [Alias("Invoke-ScrollToElement")]
     [OutputType([bool])]
     param (
         [Alias("WebDriver")] [ValidateNotNullOrWhiteSpace()] [OpenQA.Selenium.WebDriver]$driver,

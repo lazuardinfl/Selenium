@@ -12,6 +12,7 @@ function Start-Browser {
         [Alias("Profile")] [ArgumentCompletions("Temporary", "Default", "Custom")] [string]$userProfile,
         [Alias("AddArguments")] [string[]]$arguments,
         [Alias("AddExcludedArguments")] [string[]]$exArguments,
+        [Alias("ListenPort")] [int]$port,
         [Alias("HeadlessMode")] [switch]$headless,
         [Alias("EnableLogging")] [switch]$log,
         [Alias("DisableReloadOnFail")] [switch]$noRepeat,
@@ -33,7 +34,6 @@ function Start-Browser {
         }
         $options.AddArgument("ignore-ssl-errors")
         $options.AddArgument("ignore-certificate-errors")
-        $options.AddArgument("remote-debugging-port=9222")
         $options.AddExcludedArgument("enable-automation")
         $options.AddUserProfilePreference("credentials_enable_service", $false)
         $options.AddUserProfilePreference("profile.password_manager_enabled", $false)
@@ -47,6 +47,15 @@ function Start-Browser {
             }
             elseif (Split-Path -Path $userProfile -IsAbsolute) { $options.AddArgument("user-data-dir=$userProfile") }
             else { throw [ValidationMetadataException] "Invalid user profile" }
+        }
+        if ($port) { $options.AddArgument("remote-debugging-port=$port") }
+        else {
+            for ($port = 9222; $true; $port++) {
+                if (!(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue)) {
+                    $options.AddArgument("remote-debugging-port=$port")
+                    break
+                }
+            }
         }
         foreach ($arg in $arguments) { $options.AddArgument($arg) }
         foreach ($arg in $exArguments) { $options.AddExcludedArgument($arg) }
@@ -113,9 +122,10 @@ function Resume-Browser {
     [OutputType([OpenQA.Selenium.Chromium.ChromiumDriver])]
     param (
         [Alias("BrowserName")] [ValidateSet("Chrome", "Edge")] [string]$type,
+        [Alias("TargetPort")] [int]$port = 9222,
         [Alias("OnErrorContinue")] [switch]$silent
     )
-    $debuggerAddress = "127.0.0.1:9222"
+    $debuggerAddress = "127.0.0.1:$port"
     try {
         switch ($type) {
             "Chrome" {
